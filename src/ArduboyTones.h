@@ -41,6 +41,10 @@ THE SOFTWARE.
 
 #include <Arduino.h>
 
+#if defined _SAMD21_ // TODO: replace with agreed condition for SAMD port
+#ifndef ARDUBOY_SAMD
+#define ARDUBOY_SAMD // TODO: rename with agreed #define name for SAMD version of library port
+#endif
 // ************************************************************
 // ***** Values to use as function parameters in sketches *****
 // ************************************************************
@@ -119,7 +123,7 @@ THE SOFTWARE.
 // the tone() function.
 #define MAX_TONES 3
 
-#ifndef AB_DEVKIT
+#if !defined AB_DEVKIT && !defined ARDUBOY_SAMD
   // Arduboy speaker pin 1 = Arduino pin 5 = ATmega32u4 PC6
   #define TONE_PIN_PORT PORTC
   #define TONE_PIN_DDR DDRC
@@ -130,6 +134,16 @@ THE SOFTWARE.
   #define TONE_PIN2_DDR DDRC
   #define TONE_PIN2 PORTC7
   #define TONE_PIN2_MASK _BV(TONE_PIN2)
+#elif defined ARDUBOY_SAMD // TODO review order of precedence for different architectures
+  // Arduboy speaker pin 1 = Arduino pin 5 = SAMD21 PA15
+  #define TONE_PIN PORT_PA15 // COMMIT DOCS: to work with CMSIS port manipulation. https://forum.arduino.cc/index.php?topic=334073.msg2328522#msg2328522 handled differently in ArduboyTones.cpp
+  #define TONE_PIN_PORT digitalPinToPort(TONE_PIN)
+  #define TONE_PIN_MASK digitalPinToBitMask(TONE_PIN)
+  // Arduboy speaker pin 2 (with DAC on SAMD) = Arduino pin A0 = SAMD21 PA02
+  // TODO: NOT CURRENTLY USED UNTIL #defined TONES_2_SPEAKER_PINS is applied to ARDUBOY_SAMD
+  #define TONE_PIN2 PORT_PA02 // See comment against  TONE_PIN; handled differently in ArduboyTones.cpp
+  #define TONE_PIN2_PORT digitalPinToPort(TONE_PIN2)
+  #define TONE_PIN2_MASK digitalPinToBitMask(TONE_PIN2)
 #else
   // DevKit speaker pin 1 = Arduino pin A2 = ATmega32u4 PF5
   #define TONE_PIN_PORT PORTF
@@ -283,10 +297,19 @@ class ArduboyTones
    * \return boolean `true` if playing (even if sound is muted).
    */
   static bool playing();
+  
+  /** \brief
+   * initialise the timer for SAMD21
+   * Uses TC3 and toggles the speaker pin in the TC3 interrupt handler
+   */
+  static void initSAMD21timer();
+
 
 private:
   // Get the next value in the sequence
   static uint16_t getNext();
+  // Turn the timer off  
+  static void pauseSAMD21timer();
 
 public:
   // Called from ISR so must be public. Should not be called by a program.
@@ -295,4 +318,6 @@ public:
 
 #include "ArduboyTonesPitches.h"
 
-#endif
+
+#endif //defined ARDUBOY_SAMD
+#endif //defined _SAMD21_
